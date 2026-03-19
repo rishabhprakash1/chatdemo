@@ -3,9 +3,9 @@ import WhatsAppSimulation from './components/WhatsAppSimulation';
 import CRMDashboard from './components/CRMDashboard';
 
 const DUMMY_LEADS = [
-  { id: 1, name: "Alice Johnson", age: "28", qualifications: "BSc Computer Science", location: "New York", experience: "5 Years", status: "New", caller: "" },
-  { id: 2, name: "Bob Smith", age: "34", qualifications: "MBA", location: "London", experience: "8 Years", status: "In Progress", caller: "Mike T." },
-  { id: 3, name: "Charlie Davis", age: "22", qualifications: "High School", location: "Sydney", experience: "1 Year", status: "New", caller: "" }
+  { id: 1, name: "Alice Johnson", age: "28", qualifications: "BSc Computer Science", location: "New York", experience: "5 Years", status: "New", caller: "", followUpDate: null, comments: "" },
+  { id: 2, name: "Bob Smith", age: "34", qualifications: "MBA", location: "London", experience: "8 Years", status: "Follow up pending", caller: "Mike T.", followUpDate: "2026-03-25", comments: "Interested, needs callback." },
+  { id: 3, name: "Charlie Davis", age: "22", qualifications: "High School", location: "Sydney", experience: "1 Year", status: "New", caller: "", followUpDate: null, comments: "" }
 ];
 
 function App() {
@@ -21,14 +21,27 @@ function App() {
       location: leadData.location,
       experience: leadData.experience,
       status: "New",
-      caller: ""
+      caller: "",
+      followUpDate: null,
+      comments: ""
     };
     setLeads(prev => [newLead, ...prev]);
   };
 
-  const handleUpdateStatus = (id, newStatus, callerName) => {
+  const handleUpdateLead = (id, updates) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+  };
+
+  const handleSimulateTime = () => {
+    // Sets all followUpDate for "Follow up pending" leads to yesterday to simulate passing time
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = yesterday.toISOString().split('T')[0];
+
     setLeads(prev => prev.map(l => 
-      l.id === id ? { ...l, status: newStatus, caller: callerName || l.caller } : l
+      l.status === 'Follow up pending' && l.followUpDate 
+      ? { ...l, followUpDate: dateStr } 
+      : l
     ));
   };
 
@@ -69,7 +82,11 @@ function App() {
           <WhatsAppSimulation onLeadComplete={handleLeadComplete} />
         )}
         {activeTab === 'dashboard' && (
-          <CRMDashboard leads={leads} onUpdateStatus={handleUpdateStatus} />
+          <CRMDashboard 
+            leads={leads} 
+            onUpdateLead={handleUpdateLead} 
+            onSimulateTime={handleSimulateTime}
+          />
         )}
       </main>
     </div>

@@ -15,6 +15,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
   
   const [callerName, setCallerName] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [appId, setAppId] = useState("");
 
   const [callerFilter, setCallerFilter] = useState("All Callers");
 
@@ -34,12 +35,14 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
   const handleStatusChange = (lead, newStatus) => {
     const requiresCaller = lead.status === "New" && newStatus !== "New";
     const requiresDate = newStatus === "Follow up pending";
+    const requiresAppId = newStatus === "Closed";
     
-    if (requiresCaller || requiresDate) {
-      setPendingUpdate({ leadId: lead.id, newStatus, requiresCaller, requiresDate });
+    if (requiresCaller || requiresDate || requiresAppId) {
+      setPendingUpdate({ leadId: lead.id, newStatus, requiresCaller, requiresDate, requiresAppId });
       // Pre-fill if caller role, otherwise use what is there.
       setCallerName(requiresCaller && currentUserRole === 'caller' ? currentUserName : (lead.caller || ""));
       setFollowUpDate(lead.followUpDate || "");
+      setAppId(lead.appId || "");
       setModalOpen(true);
     } else {
       // Just update it directly
@@ -50,10 +53,12 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
   const confirmModalUpdate = () => {
     if (pendingUpdate.requiresCaller && !callerName.trim()) return;
     if (pendingUpdate.requiresDate && !followUpDate) return;
+    if (pendingUpdate.requiresAppId && !appId.trim()) return;
 
     const updates = { status: pendingUpdate.newStatus };
     if (pendingUpdate.requiresCaller) updates.caller = callerName;
     if (pendingUpdate.requiresDate) updates.followUpDate = followUpDate;
+    if (pendingUpdate.requiresAppId) updates.appId = appId.trim();
 
     onUpdateLead(pendingUpdate.leadId, updates);
     setModalOpen(false);
@@ -75,7 +80,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
     return (!l.caller || l.caller.toLowerCase() === currentUserName.toLowerCase());
   });
 
-  // Filter Logic (Only available for Admin really, but caller can use it on 'All Callers' default)
+  // Filter Logic
   const uniqueCallers = Array.from(new Set(visibleLeads.map(l => l.caller).filter(Boolean)));
   const filteredLeads = visibleLeads.filter(l => {
     if (callerFilter !== "All Callers") {
@@ -244,6 +249,9 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
+                        {lead.appId && (
+                           <div className="text-xs text-slate-500 mt-2 font-mono bg-slate-100 px-2 py-1 rounded inline-block">ID: {lead.appId}</div>
+                        )}
                       </td>
                       <td className="py-3 px-4 h-full">
                         <textarea 
@@ -280,7 +288,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                     onChange={e => setCallerName(e.target.value)}
                     placeholder="e.g. Amit"
                     className="w-full border border-slate-300 rounded-xl px-4 py-3 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                    readOnly={currentUserRole === 'caller'} // Caller can only assign to themselves (auto-filled)
+                    readOnly={currentUserRole === 'caller'} // Caller can only assign to themselves
                   />
                 </div>
               )}
@@ -292,6 +300,19 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                     type="date"
                     value={followUpDate}
                     onChange={e => setFollowUpDate(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-4 py-3 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  />
+                </div>
+              )}
+
+              {pendingUpdate?.requiresAppId && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Application ID</label>
+                  <input 
+                    type="text"
+                    value={appId}
+                    onChange={e => setAppId(e.target.value)}
+                    placeholder="e.g. APP-001"
                     className="w-full border border-slate-300 rounded-xl px-4 py-3 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                   />
                 </div>
@@ -309,7 +330,8 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                 onClick={confirmModalUpdate}
                 disabled={
                   (pendingUpdate?.requiresCaller && !callerName.trim()) || 
-                  (pendingUpdate?.requiresDate && !followUpDate)
+                  (pendingUpdate?.requiresDate && !followUpDate) ||
+                  (pendingUpdate?.requiresAppId && !appId.trim())
                 }
                 className="px-6 py-2.5 text-sm bg-blue-500 text-white font-semibold rounded-full hover:bg-blue-600 transition-all shadow-md disabled:opacity-50"
               >

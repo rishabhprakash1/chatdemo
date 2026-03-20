@@ -54,6 +54,7 @@ const ALL_INITIAL_LEADS = [...EXTRA_NEW_LEADS, ...DUMMY_LEADS];
 function App() {
   const [activeTab, setActiveTab] = useState('simulation');
   const [leads, setLeads] = useState(ALL_INITIAL_LEADS);
+  const [pendingWhatsAppMessage, setPendingWhatsAppMessage] = useState(null);
 
   const handleLeadComplete = (leadData) => {
     const newLead = {
@@ -74,6 +75,13 @@ function App() {
 
   const handleUpdateLead = (id, updates) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    
+    // Check if we are closing a lead and an appId was provided
+    if (updates.status === 'Closed' && updates.appId) {
+      setPendingWhatsAppMessage(
+        `Congratulations! Your application is approved. Your Application ID is ${updates.appId}. Please download our app using this link: https://apps.apple.com/us/app/demo-employment/id123456789`
+      );
+    }
   };
 
   const handleSimulateTime = () => {
@@ -122,7 +130,11 @@ function App() {
 
       <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto">
         {activeTab === 'simulation' && (
-          <WhatsAppSimulation onLeadComplete={handleLeadComplete} />
+          <WhatsAppSimulation 
+            onLeadComplete={handleLeadComplete} 
+            incomingMessage={pendingWhatsAppMessage}
+            onMessageReceived={() => setPendingWhatsAppMessage(null)}
+          />
         )}
         {activeTab === 'dashboard' && (
           <CRMDashboard 

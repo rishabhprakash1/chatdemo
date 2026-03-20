@@ -15,7 +15,7 @@ const FOLLOW_UP_MESSAGES = [
   "Hi! Still there? We're ready to help you as soon as you reply."
 ];
 
-function WhatsAppSimulation({ onLeadComplete }) {
+function WhatsAppSimulation({ onLeadComplete, incomingMessage, onMessageReceived }) {
   const [chatStarted, setChatStarted] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
@@ -31,6 +31,13 @@ function WhatsAppSimulation({ onLeadComplete }) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (incomingMessage && chatStarted) {
+      addMessage('bot', incomingMessage);
+      onMessageReceived && onMessageReceived();
+    }
+  }, [incomingMessage, chatStarted, onMessageReceived]);
 
   const addMessage = (sender, text) => {
     setMessages(prev => [...prev, {

@@ -2,20 +2,64 @@ import React, { useState } from 'react';
 import WhatsAppSimulation from './components/WhatsAppSimulation';
 import CRMDashboard from './components/CRMDashboard';
 
-const DUMMY_LEADS = [
-  { id: 1, name: "Alice Johnson", age: "28", qualifications: "BSc Computer Science", location: "New York", experience: "5 Years", status: "New", caller: "", followUpDate: null, comments: "" },
-  { id: 2, name: "Bob Smith", age: "34", qualifications: "MBA", location: "London", experience: "8 Years", status: "Follow up pending", caller: "Mike T.", followUpDate: "2026-03-25", comments: "Interested, needs callback." },
-  { id: 3, name: "Charlie Davis", age: "22", qualifications: "High School", location: "Sydney", experience: "1 Year", status: "New", caller: "", followUpDate: null, comments: "" }
-];
+const CALLERS = ["Amit", "Neha", "Priya", "Rahul", "Vikram"];
+const STATUSES = ["New", "In Progress", "Follow up pending", "Closed"];
+const NAMES = ["Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Sai", "Ayaan", "Krishna", "Ishaan", "Shaurya", "Saanvi", "Aanya", "Aadhya", "Aaradhya", "Ananya", "Pari", "Diya", "Navya", "Avni", "Mahi", "Rohan", "Siddharth", "Vikash", "Suresh", "Ramesh", "Sunil", "Anil", "Sanjay", "Manoj", "Rajesh", "Pooja", "Sneha", "Kavita", "Geeta", "Seema", "Reena", "Meena", "Asha", "Usha", "Lata", "Ravi", "Kiran", "Vijay", "Ajay", "Raj", "Nitin", "Tarun", "Varun", "Arun", "Karan"];
+
+const DUMMY_LEADS = NAMES.slice(0, 50).map((name, i) => {
+  const callerIndex = Math.floor(i / 10);
+  const caller = CALLERS[callerIndex];
+  
+  // Distribute statuses, but ensure we have a good mix. 
+  // We'll avoid "New" for these 50 so that each caller definitely has 10 assigned leads!
+  const assignedStatuses = ["In Progress", "Follow up pending", "Closed"];
+  const statusIndex = i % 3;
+  const status = assignedStatuses[statusIndex];
+  
+  const isPending = status === "Follow up pending";
+  const numSuffix = (i * 137).toString().padStart(6, '0');
+  
+  return {
+    id: i + 1,
+    name,
+    phone: "+91 98" + (100000 + i * 47) + numSuffix.slice(0, 2),
+    age: (20 + (i % 15)).toString(),
+    qualifications: ["B.Tech", "MBA", "B.Sc", "B.Com", "Diploma"][i % 5],
+    location: ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Pune"][i % 5],
+    experience: (1 + (i % 10)) + " Years",
+    status,
+    caller,
+    followUpDate: isPending ? new Date(Date.now() + (i % 2 === 0 ? 1 : -1) * 86400000).toISOString().split('T')[0] : null,
+    comments: "Initial details captured. " + (isPending ? "Waiting for client response." : "")
+  };
+});
+
+// Let's add 5 "New" unassigned leads so they have something to pull from.
+const EXTRA_NEW_LEADS = ["Deepak", "Ritu", "Alok", "Monika", "Prakash"].map((name, j) => ({
+    id: 100 + j,
+    name,
+    phone: "+91 99" + (200000 + j * 93) + "21",
+    age: (22 + j).toString(),
+    qualifications: ["B.Tech", "B.Sc", "M.Tech", "MBA", "High School"][j],
+    location: ["Pune", "Mumbai", "Delhi", "Gurgaon", "Chennai"][j],
+    experience: (j + 2) + " Years",
+    status: "New",
+    caller: "",
+    followUpDate: null,
+    comments: ""
+}));
+
+const ALL_INITIAL_LEADS = [...EXTRA_NEW_LEADS, ...DUMMY_LEADS];
 
 function App() {
   const [activeTab, setActiveTab] = useState('simulation');
-  const [leads, setLeads] = useState(DUMMY_LEADS);
+  const [leads, setLeads] = useState(ALL_INITIAL_LEADS);
 
   const handleLeadComplete = (leadData) => {
     const newLead = {
       id: Date.now(),
       name: leadData.name,
+      phone: "+91 9" + Math.floor(100000000 + Math.random() * 900000000), // Generate a random Indian number 
       age: leadData.age,
       qualifications: leadData.qualifications,
       location: leadData.location,
@@ -33,7 +77,6 @@ function App() {
   };
 
   const handleSimulateTime = () => {
-    // Sets all followUpDate for "Follow up pending" leads to yesterday to simulate passing time
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split('T')[0];

@@ -7,10 +7,12 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
   const [loginId, setLoginId] = useState("");
   const [loginPwd, setLoginPwd] = useState("");
 
+  const [currentUserRole, setCurrentUserRole] = useState("caller"); // 'admin' or 'caller'
+  const [currentUserName, setCurrentUserName] = useState(""); 
+
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState(null);
   
-  // Modal state fields
   const [callerName, setCallerName] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
 
@@ -18,7 +20,15 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (loginId.trim() && loginPwd.trim()) setIsAuthenticated(true);
+    if (loginId.trim() && loginPwd.trim()) {
+      if (loginId.trim().toLowerCase() === 'admin') {
+        setCurrentUserRole('admin');
+      } else {
+        setCurrentUserRole('caller');
+        setCurrentUserName(loginId.trim());
+      }
+      setIsAuthenticated(true);
+    }
   };
 
   const handleStatusChange = (lead, newStatus) => {
@@ -27,7 +37,8 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
     
     if (requiresCaller || requiresDate) {
       setPendingUpdate({ leadId: lead.id, newStatus, requiresCaller, requiresDate });
-      setCallerName(lead.caller || "");
+      // Pre-fill if caller role, otherwise use what is there.
+      setCallerName(requiresCaller && currentUserRole === 'caller' ? currentUserName : (lead.caller || ""));
       setFollowUpDate(lead.followUpDate || "");
       setModalOpen(true);
     } else {
@@ -52,21 +63,33 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
   const isPastDue = (dateStr) => {
     if (!dateStr) return false;
     const today = new Date();
-    // Offset local timezone
     today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
     const curStr = today.toISOString().split('T')[0];
     return dateStr <= curStr;
   };
 
-  // Extract unique callers for the filter
-  const uniqueCallers = Array.from(new Set(leads.map(l => l.caller).filter(Boolean)));
+  // Visibility logic
+  const visibleLeads = leads.filter(l => {
+    if (currentUserRole === 'admin') return true;
+    // Caller view: can see their own leads, plus any unassigned "New" leads to claim them
+    return (!l.caller || l.caller.toLowerCase() === currentUserName.toLowerCase());
+  });
 
-  const filteredLeads = leads.filter(l => {
+  // Filter Logic (Only available for Admin really, but caller can use it on 'All Callers' default)
+  const uniqueCallers = Array.from(new Set(visibleLeads.map(l => l.caller).filter(Boolean)));
+  const filteredLeads = visibleLeads.filter(l => {
     if (callerFilter !== "All Callers") {
       return l.caller === callerFilter;
     }
     return true;
   });
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setLoginId("");
+    setLoginPwd("");
+    setCallerFilter("All Callers");
+  };
 
   if (!isAuthenticated) {
     return (
@@ -74,7 +97,9 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
         <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-slate-200">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-800 tracking-tight mb-2">CRM Login</h2>
-            <p className="text-slate-500 text-sm">Please sign in to access leads.</p>
+            <p className="text-slate-500 text-sm">
+              Use <strong>admin</strong> to access all leads. Enter a Caller's Name (e.g. <strong>Amit</strong>) to see customized caller views.
+            </p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -84,7 +109,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                 value={loginId}
                 onChange={e => setLoginId(e.target.value)}
                 className="w-full border border-slate-300 rounded-xl px-4 py-2 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                placeholder="Enter ID"
+                placeholder="Enter ID (e.g., admin, Amit)"
                 required
               />
             </div>
@@ -95,7 +120,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                 value={loginPwd}
                 onChange={e => setLoginPwd(e.target.value)}
                 className="w-full border border-slate-300 rounded-xl px-4 py-2 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                placeholder="Enter Password"
+                placeholder="Enter Any Password"
                 required
               />
             </div>
@@ -115,24 +140,32 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
     <div className="w-full max-w-[1400px] mx-auto animate-in fade-in duration-500">
       <div className="flex justify-between items-end mb-8 gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Active Leads</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Active Leads</h1>
+            <span className={`text-xs px-2 py-1 rounded-md font-bold uppercase ${currentUserRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+              {currentUserRole === 'admin' ? 'Admin View' : `${currentUserName}'s View`}
+            </span>
+            <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-slate-600 underline ml-2">Sign Out</button>
+          </div>
           <div className="text-sm font-medium text-slate-500">
             Showing {filteredLeads.length} candidates
           </div>
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter by Caller</label>
-            <select 
-              value={callerFilter}
-              onChange={(e) => setCallerFilter(e.target.value)}
-              className="border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-100 bg-white shadow-sm"
-            >
-              <option value="All Callers">All Callers</option>
-              {uniqueCallers.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
+          {currentUserRole === 'admin' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter by Caller</label>
+              <select 
+                value={callerFilter}
+                onChange={(e) => setCallerFilter(e.target.value)}
+                className="border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-100 bg-white shadow-sm"
+              >
+                <option value="All Callers">All Callers</option>
+                {uniqueCallers.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
 
           <button 
             onClick={onSimulateTime}
@@ -149,6 +182,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs tracking-wider uppercase">
                 <th className="py-4 px-4 font-medium">Name</th>
+                <th className="py-4 px-4 font-medium">Phone</th>
                 <th className="py-4 px-4 font-medium">Age</th>
                 <th className="py-4 px-4 font-medium">Qualifications</th>
                 <th className="py-4 px-4 font-medium">Location</th>
@@ -162,7 +196,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
             <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="py-12 px-6 text-center text-slate-400">
+                  <td colSpan="10" className="py-12 px-6 text-center text-slate-400">
                     No leads available matching your criteria.
                   </td>
                 </tr>
@@ -175,6 +209,7 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                       className={`transition-colors ${pastDue ? 'bg-red-50 hover:bg-red-100/80' : 'hover:bg-slate-50'}`}
                     >
                       <td className="py-4 px-4 font-medium text-slate-900">{lead.name || '-'}</td>
+                      <td className="py-4 px-4 font-medium">{lead.phone || '-'}</td>
                       <td className="py-4 px-4">{lead.age || '-'}</td>
                       <td className="py-4 px-4">{lead.qualifications || '-'}</td>
                       <td className="py-4 px-4">{lead.location || '-'}</td>
@@ -243,8 +278,9 @@ function CRMDashboard({ leads, onUpdateLead, onSimulateTime }) {
                     type="text"
                     value={callerName}
                     onChange={e => setCallerName(e.target.value)}
-                    placeholder="e.g. John Doe"
+                    placeholder="e.g. Amit"
                     className="w-full border border-slate-300 rounded-xl px-4 py-3 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                    readOnly={currentUserRole === 'caller'} // Caller can only assign to themselves (auto-filled)
                   />
                 </div>
               )}

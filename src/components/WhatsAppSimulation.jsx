@@ -80,10 +80,10 @@ function WhatsAppSimulation({ onLeadComplete }) {
         setFollowUpCount(0); // reset follow ups for new question
       } else {
         addMessage('bot', "Thank you! Our team will review your profile and get back to you shortly.");
-        // We notify parent on completion
+        // Notify parent 
         onLeadComplete({
           ...leadData,
-          [currQ.key]: userAns // pass latest state
+          [currQ.key]: userAns 
         });
       }
     }, 1000);
@@ -99,7 +99,6 @@ function WhatsAppSimulation({ onLeadComplete }) {
 
   return (
     <div className="flex flex-col items-center relative min-h-[85vh]">
-      
       {!chatStarted ? (
         <div className="flex flex-col items-center justify-center mt-32 space-y-6">
           <div className="w-20 h-20 bg-blue-100 text-blue-500 rounded-full flex justify-center items-center mb-4">
@@ -126,7 +125,6 @@ function WhatsAppSimulation({ onLeadComplete }) {
             </div>
             <div>
               <div className="font-semibold leading-tight">Employment Agency</div>
-              <div className="text-xs text-teal-100">Bot account</div>
             </div>
           </div>
 
